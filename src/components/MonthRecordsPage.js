@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RecordsTable from './RecordsTable';
+import InventoryRecordService from '../services/inventoryRecordService';
 import './MonthRecordsPage.css';
 
 const MonthRecordsPage = () => {
@@ -27,30 +28,17 @@ const MonthRecordsPage = () => {
 
     try {
       console.log('🔍 Fetching records for date range:', startDate, 'to', endDate);
-      const response = await fetch(`/inventory-records?view=month&start=${startDate}&end=${endDate}`);
-      console.log('🔍 Response status:', response.status);
-      console.log('🔍 Response headers:', response.headers);
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const response = await InventoryRecordService.getRecords({
+        startDate: startDate,
+        endDate: endDate,
+        limit: 10000
+      });
       
-      const responseText = await response.text();
-      console.log('🔍 Response text:', responseText);
-      
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('🔍 JSON parse error:', parseError);
-        setError('Invalid response from server: ' + responseText.substring(0, 100));
-        return;
-      }
-      
-      if (data.success) {
-        setRecords(data.data);
+      if (response.success) {
+        setRecords(response.data || []);
       } else {
-        setError(data.message || 'Failed to fetch records');
+        setError(response.message || 'Failed to fetch records');
       }
     } catch (err) {
       console.error('🔍 Fetch error:', err);
