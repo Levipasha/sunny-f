@@ -12,6 +12,29 @@ const MonthRecordsPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Initialize with current month by default
+  React.useEffect(() => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    setStartDate(firstDayOfMonth.toISOString().split('T')[0]);
+    setEndDate(lastDayOfMonth.toISOString().split('T')[0]);
+    
+    console.log('🔍 Initialized with current month:', {
+      startDate: firstDayOfMonth.toISOString().split('T')[0],
+      endDate: lastDayOfMonth.toISOString().split('T')[0]
+    });
+  }, []);
+
+  // Auto-fetch data when dates are set
+  React.useEffect(() => {
+    if (startDate && endDate && startDate !== endDate) {
+      console.log('🔍 Auto-fetching data for initialized date range');
+      fetchData();
+    }
+  }, [startDate, endDate]);
+
   const fetchData = async () => {
     if (!startDate || !endDate) {
       setError('Please select both start and end dates');
@@ -23,22 +46,48 @@ const MonthRecordsPage = () => {
       return;
     }
 
+    // Check if dates are the same
+    if (startDate === endDate) {
+      setError('Start date and end date cannot be the same. Please select a date range.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
       console.log('🔍 Fetching records for date range:', startDate, 'to', endDate);
       
-      const response = await InventoryRecordService.getRecords({
-        startDate: startDate,
-        endDate: endDate,
-        limit: 10000
+      // Ensure proper date formatting for the API
+      const formattedStartDate = new Date(startDate);
+      formattedStartDate.setHours(0, 0, 0, 0);
+      
+      const formattedEndDate = new Date(endDate);
+      formattedEndDate.setHours(23, 59, 59, 999);
+      
+      console.log('🔍 Formatted dates for API:', {
+        startDate: formattedStartDate.toISOString(),
+        endDate: formattedEndDate.toISOString()
       });
+      
+      // Log the exact parameters being sent
+      const apiParams = {
+        startDate: formattedStartDate.toISOString(),
+        endDate: formattedEndDate.toISOString(),
+        limit: 10000
+      };
+      console.log('🔍 API Parameters:', apiParams);
+      
+      const response = await InventoryRecordService.getRecords(apiParams);
+      
+      console.log('🔍 API Response:', response);
       
       if (response.success) {
         setRecords(response.data || []);
+        console.log(`✅ Successfully fetched ${response.data?.length || 0} records`);
       } else {
         setError(response.message || 'Failed to fetch records');
+        console.error('❌ API returned error:', response);
       }
     } catch (err) {
       console.error('🔍 Fetch error:', err);
@@ -73,8 +122,20 @@ const MonthRecordsPage = () => {
         return;
     }
     
-    setStartDate(start.toISOString().split('T')[0]);
-    setEndDate(today.toISOString().split('T')[0]);
+    // Ensure we have different dates
+    const startDateStr = start.toISOString().split('T')[0];
+    const endDateStr = today.toISOString().split('T')[0];
+    
+    console.log('🔍 Setting quick range:', {
+      range,
+      startDate: startDateStr,
+      endDate: endDateStr,
+      startDateObj: start,
+      endDateObj: today
+    });
+    
+    setStartDate(startDateStr);
+    setEndDate(endDateStr);
   };
 
   return (
@@ -145,6 +206,18 @@ const MonthRecordsPage = () => {
               </button>
               <button onClick={() => setQuickRange('year')} className="range-btn">
                 Last Year
+              </button>
+              <button 
+                onClick={() => {
+                  const today = new Date();
+                  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                  setStartDate(firstDayOfMonth.toISOString().split('T')[0]);
+                  setEndDate(lastDayOfMonth.toISOString().split('T')[0]);
+                }} 
+                className="range-btn current-month-btn"
+              >
+                Current Month
               </button>
             </div>
           </div>
