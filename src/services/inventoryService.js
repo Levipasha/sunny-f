@@ -1,299 +1,265 @@
-/**
- * Inventory Service
- * Handles all API calls to the backend for inventory management
- */
-
-// API base URL - adjust this based on your backend server configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://sunny-b.onrender.com';
 
-/**
- * Get all inventory items
- * @returns {Promise} Promise object with inventory items
- */
-export const getAllInventoryItems = async () => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/inventory`);
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error('Failed to fetch inventory items:', error);
-    throw error;
-  }
-};
+class InventoryRecordService {
+  // Get all records with optional filtering
+  static async getRecords(params = {}) {
+    try {
+      console.log('🔍 getRecords called with params:', params);
+      
+      const queryParams = new URLSearchParams();
+      
+      if (params.startDate) queryParams.append('startDate', params.startDate);
+      if (params.endDate) queryParams.append('endDate', params.endDate);
+      if (params.itemName) queryParams.append('itemName', params.itemName);
+      if (params.page) queryParams.append('page', params.page);
+      if (params.limit) queryParams.append('limit', params.limit);
+      if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+      if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
 
-/**
- * Add a new inventory item
- * @param {Object} item - The inventory item to add
- * @returns {Promise} Promise object with the added item
- */
-export const addInventoryItem = async (item) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/inventory`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(item),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error('Failed to add inventory item:', error);
-    throw error;
-  }
-};
+      const fullUrl = `${API_BASE_URL}/inventory-records?${queryParams}`;
+      console.log('🔍 Full API URL:', fullUrl);
+      console.log('🔍 Query parameters:', queryParams.toString());
 
-/**
- * Add multiple inventory items in bulk
- * @param {Array} items - Array of inventory items to add
- * @returns {Promise} Promise object with the added items
- */
-export const addInventoryItems = async (items) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/inventory/bulk`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ items }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+      const response = await fetch(fullUrl);
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Response ok:', response.ok);
+      console.log('🔍 Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      const data = await response.json();
+      console.log('🔍 Response data:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch records');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching records:', error);
+      throw error;
     }
-    
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error('Failed to add inventory items:', error);
-    throw error;
   }
-};
 
-/**
- * Update an inventory item
- * @param {number} id - The ID of the item to update
- * @param {Object} item - The updated inventory item data
- * @returns {Promise} Promise object with the updated item
- */
-export const updateInventoryItem = async (id, item) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/inventory/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(item),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+  // Get monthly records
+  static async getMonthlyRecords(months = 1) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/inventory-records/monthly?months=${months}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch monthly records');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching monthly records:', error);
+      throw error;
     }
-    
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error(`Failed to update inventory item with ID ${id}:`, error);
-    throw error;
   }
-};
 
-/**
- * Delete an inventory item
- * @param {number} id - The ID of the item to delete
- * @returns {Promise} Promise object with the deleted item
- */
-export const deleteInventoryItem = async (id) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/inventory/${id}`, {
-      method: 'DELETE',
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error(`Failed to delete inventory item with ID ${id}:`, error);
-    throw error;
-  }
-};
-
-/**
- * Prepare inventory for next day
- * @returns {Promise} Promise object with the updated items
- */
-export const prepareForNextDay = async () => {
-  try {
-    console.log('🚀 Calling prepare-next-day endpoint...');
-    console.log('🔍 API URL:', `${API_BASE_URL}/inventory/prepare-next-day`);
-    
-    const response = await fetch(`${API_BASE_URL}/inventory/prepare-next-day`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    console.log('🔍 Response status:', response.status);
-    console.log('🔍 Response ok:', response.ok);
-    
-    if (!response.ok) {
-      // Try to get error details from response
-      let errorMessage = `HTTP Error: ${response.status}`;
+  // Create new record
+  static async createRecord(recordData) {
+    try {
+      console.log('🔍 Debug: Creating inventory record with data:', JSON.stringify(recordData, null, 2));
+      
+      const response = await fetch(`${API_BASE_URL}/inventory-records`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(recordData),
+      });
+      
+      console.log('🔍 Debug: Response status:', response.status);
+      console.log('🔍 Debug: Response ok:', response.ok);
+      console.log('🔍 Debug: Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      let data;
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
-        console.error('🔍 Error response data:', errorData);
+        data = await response.json();
+        console.log('🔍 Debug: Response data:', data);
       } catch (parseError) {
-        console.warn('🔍 Could not parse error response:', parseError);
+        console.error('🔍 Debug: Could not parse response as JSON:', parseError);
+        const errorText = await response.text();
+        console.error('🔍 Debug: Response text:', errorText);
+        throw new Error(`Server returned invalid JSON: ${errorText}`);
       }
-      throw new Error(errorMessage);
-    }
-    
-    const data = await response.json();
-    console.log('✅ Success response:', data);
-    return data.data;
-  } catch (error) {
-    console.error('❌ Failed to prepare inventory for next day:', error);
-    console.error('❌ Error details:', error.message);
-    console.error('❌ Error stack:', error.stack);
-    throw error;
-  }
-};
-
-/**
- * Initialize inventory with default data
- * @param {Array} initialData - Array of initial inventory items
- * @returns {Promise} Promise object with the initialized items
- */
-export const initializeInventory = async (initialData) => {
-  try {
-    // First clear existing inventory (optional)
-    const currentItems = await getAllInventoryItems();
-    
-    if (currentItems && currentItems.length > 0) {
-      // If there are existing items, just return them
-      return currentItems;
-    }
-    
-    // Add all initial items
-    return await addInventoryItems(initialData);
-  } catch (error) {
-    console.error('Failed to initialize inventory:', error);
-    throw error;
-  }
-};
-
-/**
- * Create inventory record for a specific date
- * @param {Object} recordData - The inventory record data
- * @returns {Promise} Promise object with the created/updated record
- */
-export const createInventoryRecord = async (recordData) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/inventory/create-record`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(recordData),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error('Failed to create inventory record:', error);
-    throw error;
-  }
-};
-
-/**
- * Produce a recipe and deduct ingredients from inventory
- * @param {string} recipeName - Name of the recipe to produce
- * @param {number} quantity - Quantity to produce (in recipe units)
- * @returns {Promise} Promise object with the production result
- */
-export const produceRecipe = async (recipeName, quantity) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/inventory/produce-recipe`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ recipeName, quantity }),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data;
-    
-  } catch (error) {
-    console.error('Failed to produce recipe:', error);
-    throw error;
-  }
-};
-
-/**
- * Get recipe information
- * @param {string} recipeName - Name of the recipe
- * @returns {Object} Recipe information
- */
-export const getRecipeInfo = async (recipeName) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/inventory/recipes/${encodeURIComponent(recipeName)}`);
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null;
+      
+      if (!response.ok) {
+        let errorMessage = data.message || 'Failed to create record';
+        
+        // Add specific error handling for common HTTP status codes
+        if (response.status === 400) {
+          if (data.errors && Array.isArray(data.errors)) {
+            errorMessage = `Validation failed: ${data.errors.join(', ')}`;
+          } else {
+            errorMessage = `Bad Request: ${errorMessage}`;
+          }
+        } else if (response.status === 401) {
+          errorMessage = `Unauthorized: ${errorMessage}`;
+        } else if (response.status === 403) {
+          errorMessage = `Forbidden: ${errorMessage}`;
+        } else if (response.status === 404) {
+          errorMessage = `Not Found: ${errorMessage}`;
+        } else if (response.status === 500) {
+          errorMessage = `Server Error: ${errorMessage}`;
+        } else if (response.status === 0) {
+          errorMessage = `Network Error: Unable to connect to server. Check if server is running and accessible.`;
+        }
+        
+        throw new Error(errorMessage);
       }
-      throw new Error(`Error: ${response.status}`);
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Error creating record:', error);
+      console.error('❌ Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      throw error;
     }
-    
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error('Failed to get recipe info:', error);
-    throw error;
   }
-};
 
-/**
- * Get all available recipes
- * @returns {Array} Array of recipe names
- */
-export const getAllRecipes = async () => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/inventory/recipes`);
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+  // Update record
+  static async updateRecord(id, updateData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/inventory-records/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update record');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error updating record:', error);
+      throw error;
     }
-    
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error('Failed to get recipes:', error);
-    throw error;
   }
-};
+
+  // Delete record
+  static async deleteRecord(id) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/inventory-records/${id}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete record');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      throw error;
+    }
+  }
+
+  // Export records as CSV
+  static async exportRecords(params = {}) {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (params.startDate) queryParams.append('startDate', params.startDate);
+      if (params.endDate) queryParams.append('endDate', params.endDate);
+      if (params.itemName) queryParams.append('itemName', params.itemName);
+
+      const response = await fetch(`${API_BASE_URL}/inventory-records/export?${queryParams}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to export records');
+      }
+      
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inventory-records-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      return { success: true, message: 'Export successful' };
+    } catch (error) {
+      console.error('Error exporting records:', error);
+      throw error;
+    }
+  }
+
+  // Export monthly records as Excel with daily sheets
+  static async exportMonthlyRecords(month = null, year = null) {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (month) queryParams.append('month', month);
+      if (year) queryParams.append('year', year);
+
+      const response = await fetch(`${API_BASE_URL}/inventory-records/export-monthly?${queryParams}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to export monthly records');
+      }
+      
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Generate filename based on month/year
+      const currentDate = new Date();
+      const targetMonth = month ? parseInt(month) : currentDate.getMonth() + 1;
+      const targetYear = year ? parseInt(year) : currentDate.getFullYear();
+      const monthName = new Date(targetYear, targetMonth - 1).toLocaleString('default', { month: 'long' });
+      
+      a.download = `inventory-${monthName}-${targetYear}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      return { success: true, message: 'Monthly Excel export successful' };
+    } catch (error) {
+      console.error('Error exporting monthly records:', error);
+      throw error;
+    }
+  }
+
+  // Get summary statistics
+  static async getSummary(params = {}) {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (params.startDate) queryParams.append('startDate', params.startDate);
+      if (params.endDate) queryParams.append('endDate', params.endDate);
+
+      const response = await fetch(`${API_BASE_URL}/inventory-records/summary?${queryParams}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch summary');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching summary:', error);
+      throw error;
+    }
+  }
+}
+
+export default InventoryRecordService;
